@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SignalRChatServerExample.Hubs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,6 +25,12 @@ namespace SignalRChatServerExample
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddRazorPages();
+            services.AddSignalR();
+            services.AddCors(opt => opt.AddDefaultPolicy(policy => policy
+             .AllowCredentials()
+             .AllowAnyHeader()
+             .AllowAnyHeader()
+             .SetIsOriginAllowed(x => true)));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -39,7 +46,7 @@ namespace SignalRChatServerExample
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
-
+            app.UseCors();
             app.UseHttpsRedirection();
             app.UseStaticFiles();
 
@@ -49,7 +56,8 @@ namespace SignalRChatServerExample
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapRazorPages();
+                endpoints.MapHub<ChatHub>("/chathub");
+                //endpoints.MapRazorPages();
             });
         }
     }
