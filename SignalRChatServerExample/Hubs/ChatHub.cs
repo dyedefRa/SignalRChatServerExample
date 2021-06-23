@@ -23,5 +23,21 @@ namespace SignalRChatServerExample.Hubs
             //Nicknameleri göder.
             await Clients.All.SendAsync("allClients", ClientSource.Clients);
         }
+
+        public async Task SendMessageAsync(string message, string clientName)
+        {
+            MyClient senderClient = ClientSource.Clients.FirstOrDefault(x => x.ConnectionId == Context.ConnectionId);
+
+            if (clientName == "Tümü")
+            {
+                await Clients.Others.SendAsync("receiveMessage", message, senderClient.NickName);
+            }
+            else
+            {
+                MyClient client = ClientSource.Clients.FirstOrDefault(x => x.NickName == clientName);
+                await Clients.Client(client.ConnectionId).SendAsync("receiveMessage",message, senderClient.NickName);
+            }
+
+        }
     }
 }
