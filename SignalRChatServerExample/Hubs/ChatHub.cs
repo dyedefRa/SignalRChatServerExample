@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using SignalRChatServerExample.Data;
 using SignalRChatServerExample.Models;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -35,9 +34,25 @@ namespace SignalRChatServerExample.Hubs
             else
             {
                 MyClient client = ClientSource.Clients.FirstOrDefault(x => x.NickName == clientName);
-                await Clients.Client(client.ConnectionId).SendAsync("receiveMessage",message, senderClient.NickName);
+                await Clients.Client(client.ConnectionId).SendAsync("receiveMessage", message, senderClient.NickName);
             }
 
+        }
+
+        public async Task CreateGroup(string groupName)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+            GroupSource.Groups.Add(new MyGroup() { GroupName = groupName });
+
+            await Clients.All.SendAsync("addedGroup", groupName);
+        }
+
+        public async Task JoinGroup(IEnumerable<string> groups)
+        {
+            foreach (var group in groups)
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, group);
+            }
         }
     }
 }
