@@ -19,10 +19,11 @@ namespace SignalRChatServerExample.Hubs
 
             ClientSource.Clients.Add(myClient);
             await Clients.Others.SendAsync("clientJoined", nickName);
-            //Nicknameleri göder.
+            //Nicknameleri gönder.
             await Clients.All.SendAsync("allClients", ClientSource.Clients);
         }
 
+        //Genel mesaj fonk.
         public async Task SendMessageAsync(string message, string clientName)
         {
             MyClient senderClient = ClientSource.Clients.FirstOrDefault(x => x.ConnectionId == Context.ConnectionId);
@@ -39,6 +40,7 @@ namespace SignalRChatServerExample.Hubs
 
         }
 
+        //Grup oluştur
         public async Task CreateGroup(string groupName)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
@@ -47,6 +49,7 @@ namespace SignalRChatServerExample.Hubs
             await Clients.All.SendAsync("addedGroup", groupName);
         }
 
+        //Gruba katil
         public async Task JoinGroup(IEnumerable<string> groups)
         {
             foreach (var group in groups)
