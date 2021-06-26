@@ -9,6 +9,7 @@ namespace SignalRChatServerExample.Hubs
 {
     public class ChatHub : Hub
     {
+        //Nick name Ata
         public async Task GetNickName(string nickName)
         {
             MyClient myClient = new MyClient()
