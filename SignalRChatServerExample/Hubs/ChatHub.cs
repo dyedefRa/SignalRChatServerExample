@@ -9,6 +9,13 @@ namespace SignalRChatServerExample.Hubs
 {
     public class ChatHub : Hub
     {
+
+        //Bu clienti bul
+        public MyClient ThisClient()
+        {
+            return ClientSource.Clients.FirstOrDefault(x => x.ConnectionId == Context.ConnectionId);
+        }
+
         //Nick name Ata
         public async Task GetNickName(string nickName)
         {
@@ -43,7 +50,6 @@ namespace SignalRChatServerExample.Hubs
                 MyClient client = ClientSource.Clients.FirstOrDefault(x => x.NickName == clientName);
                 await Clients.Client(client.ConnectionId).SendAsync("receiveMessage", message, ThisClient().NickName);
             }
-
         }
 
         //Grup oluştur
@@ -55,7 +61,6 @@ namespace SignalRChatServerExample.Hubs
             //Eklenilen gruba ekleyen kişiyi ekledik
             //Proje tarafı bilsin.
             group.Clients.Add(ThisClient());
-
             GroupSource.Groups.Add(group);
 
             await Clients.All.SendAsync("addedGroup", groupName);
@@ -70,27 +75,26 @@ namespace SignalRChatServerExample.Hubs
                 await Groups.AddToGroupAsync(Context.ConnectionId, group);
 
                 var _group = GroupSource.Groups.FirstOrDefault(x => x.GroupName == group);
+
+                //Grupta yoksa ekle.
                 if (!_group.Clients.Any(x => x.ConnectionId == ThisClient().ConnectionId))
-                {
                     _group.Clients.Add(ThisClient());
-                }
-                // HATA ! odada yoksa ekleyeceğiz          
             }
         }
         //Seçilen grubun kullanıcıları döndür.
         public async Task SendGroupClients(string groupName)
         {
             //groupName degeri tümü ise tüm clientlar degil ise o gruptaki clientları gonderır.
+
             var thisGroup = GroupSource.Groups.FirstOrDefault(x => x.GroupName == groupName);
             await Clients.Caller.SendAsync("allClients", groupName == "Tümü" ? ClientSource.Clients : thisGroup.Clients);
-
-
         }
 
-        //Bu clienti bul
-        public MyClient ThisClient()
+        //Seçilen grubun kullanıcılarına ilgili mesajı gönder
+        public async Task SendMessageToGroup(string groupName,string message)
         {
-            return ClientSource.Clients.FirstOrDefault(x => x.ConnectionId == Context.ConnectionId);
+            await Clients.Group(groupName).SendAsync("receiveMessage", message,ThisClient().NickName);
         }
+
     }
 }

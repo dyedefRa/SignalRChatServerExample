@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="styles/bootstrap.min.css">
+    <link rel="stylesheet" href="styles/style.css">
+
+</head>
+
+<body>
+    <div id="showConnectionId" style="color: chocolate;" class="row justify-content-center">
+
+    </div>
+    <div class="row">
+        <div class="col-md-1"></div>
+        <div class="col-md-10">
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" id="txtRoomName" class="form-control form-control-lg disabled" placeholder="Oda adı.">
+                    <br>
+                    <button id="btnCreateRoom" type="button" class="btn btn-info rightButton disabled">Oda Oluştur</button>
+                    <br>
+                    <hr>
+                    <select size="5" style="width: 100%;" id="selectedRooms" class="form-select disabled " multiple>
+                    <option selected value="Tümü">Odalar</option>
+                    </select>
+                    <br>
+                    <button type="button" id="btnJoinGroup" class="btn btn-primary rightButton disabled">Seçili Odalara Gir</button>
+                    <!-- ODALAR -->
+                    <br> <br> <br>
+
+                    <!-- Clientlar -->
+
+                    <div class="list-group" id="clients">
+                        <a class="list-group-item list-group-item-action users active">Tümü</a>
+                        <div id="_clients"></div>
+
+                    </div>
+                    <!-- Clientlar -->
+                </div>
+                <div class="col-md-6">
+                    <!-- Mesajlaşma -->
+                    <div class="alert alert-success" id="clientDurum" style="display: none;">
+
+                    </div>
+
+                    <textarea name="" id="txtMessage" cols="30" rows="3" class="form-control" style="margin-top: 5px;" placeholder="İletilecek mesajı buraya giriniz."></textarea>
+                    <button type="button" class="btn btn-light rightButton " id="btnGroupSend">Gruba Gönder</button>
+                    <button type="button" class="btn btn-light rightButton " id="btnSend">Gönder</button>
+
+                    <br> <br> <br>
+
+                    <div class="list-group" id="mesajlar">
+                        <a href="" class="list-group-item list-group-item-action mesaj" aria-current="true">
+                            <div class="d-flex w-100 justify-context-between">
+                                <h5 class="mb-1"></h5>
+                                <h5 class="mb-2"></h5>
+                            </div>
+                            <p class="mb-1"> </p>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <input class="form-control form-control-lg" type="text" placeholder="Adınız/Nick" id="txtNickName">
+                    <button type="button" class="btn btn-success leftButton" id="btnLogin">Giriş Yap</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-1"></div>
+    </div>
+
+
+</body>
+<script src="/scripts/signalr.min.js"></script>
+<script src="/scripts/jquery.min.js"></script>
+<script src="/scripts/bootstrap.min.js"></script>
+<script>
+    $(document).ready(() => {
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("https://localhost:44344/chathub")
+            .build();
+        connection.start();
+
+        const divStatus = $('#clientDurum');
+
+        function myAnimate() {
+            divStatus.fadeIn(2000, () => {
+                divStatus.fadeOut(2000);
+            }, 2000);
+        }
+
+        $(".disabled").attr("disabled", "disabled");
+
+        $("body").on("click", ".users", function() {
+            $(".users").each((index, item) => {
+                item.classList.remove("active");
+            });
+            $(this).addClass("active");
+        });
+        // $("#btnSend").click(() => {
+        //     var x = $(".message").clone();
+        //     x.removeClass("message");
+        //     x.find("h5")[1].html() = ""; //Ahmeti gösterir
+        //     x.find("h5")[0].innerHTML = ""; //Seni gçsterir
+        //     $(".message").append(x);
+        // });
+
+        $("#btnSend").click(() => {
+            const clientName = $(".users.active").first().html();
+            const message = $("#txtMessage").val();
+            //Serveri tetikletmek için invoke cagırıyoruz.
+            connection.invoke("SendMessageAsync", message, clientName);
+
+            const _message = $(".mesaj").clone();
+            _message.find("p").html(message);
+            // _message.find("h5")[1].html = "Sen";
+            $(".mesaj h5:eq(1)").html("Sen");
+            $(".mesaj h5:eq(0)").html("");
+            _message.removeClass("mesaj");
+            $("#mesajlar").append(_message);
+        });
+
+        //Kullanıcıyı Login edelim ve ardından bu method servera gidip alttaki methodları cagırsın
+        $("#btnLogin").click(() => {
+            var nickName = $("#txtNickName").val();
+            connection.invoke("GetNickName", nickName)
+                .catch(err =>
+                    console.log(err));
+            $(".disabled").removeAttr("disabled");
+
+            connection.on("sendThisConnectionId", (conId) => {
+                $("#showConnectionId").html(conId);
+            });
+
+        });
+
+        connection.on("clientJoined", nickName => {
+            console.log("clientJoinde");
+            $("#clientDurum").html(`${nickName} giriş yaptı.`);
+            $("#clientDurum").fadeIn(2000, () => {
+                setTimeout(() => {
+                    $("#clientDurum").fadeOut(2000);
+                }, 2000)
+            });
+        });
+
+        connection.on("allClients", clients => {
+            $("#_clients").html("");
+            $.each(clients, (index, item) => {
+                const user = $(".users").first().clone();
+                user.removeClass("active");
+                user.html(item.nickName);
+                $("#_clients").append(user);
+            });
+        });
+        //Serverdaki method tetıkledın client tarafında bu methodu yakalıyoruz.
+        connection.on("receiveMessage", (message, senderer) => {
+
+            const _message = $(".mesaj").clone();
+            _message.find("p").html(message);
+            $(".mesaj h5:eq(0)").html(senderer);
+            $(".mesaj h5:eq(1)").html("");
+
+            // _message.find("h5")[0].html = senderer;
+            _message.removeClass("mesaj");
+            $("#mesajlar").append(_message);
+        });
+
+
+
+        //Group Methodları  addedGroup
+        //Grup oluşturma
+        $("#btnCreateRoom").click(() => {
+            var roomName = $("#txtRoomName").val();
+            connection.invoke("CreateGroup", roomName);
+        });
+        //Grup oluşturulduktan sonra clientlari etkileyen method
+        connection.on("addedGroup", roomName => {
+            $("#selectedRooms").append(new Option(roomName, roomName));
+        });
+
+        //Gruba katıl
+        $("#btnJoinGroup").click(() => {
+            var selectedRooms = $("#selectedRooms").val();
+            console.log(selectedRooms);
+            // $("#selectedRooms option:selected");
+            connection.invoke("JoinGroup", selectedRooms);
+        });
+
+        //Selecten odaya tıklandıgında alta odada olan clientlar gelsi.n
+        $("#selectedRooms").change(function() {
+            var room = $(this).val()[0];
+            _selectedGroup = room;
+            connection.invoke("SendGroupClients", room);
+        });
+
+        let _selectedGroup = "";
+
+        //Gruba mesaj gönder 
+        $("#btnGroupSend").click(() => {
+            const message = $("#txtMessage").val();
+            console.log('test');
+            if (_selectedGroup !== "") {
+                connection.invoke("SendMessageToGroup", _selectedGroup, message);
+                const _message = $(".mesaj").clone();
+                _message.find("p").html(message);
+                // _message.find("h5")[1].html = "Sen";
+                $(".mesaj h5:eq(1)").html("Sen");
+                $(".mesaj h5:eq(0)").html("");
+                _message.removeClass("mesaj");
+                $("#mesajlar").append(_message);
+            }
+        });
+
+
+    });
+</script>
+
+</html>
