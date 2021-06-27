@@ -18,25 +18,30 @@ namespace SignalRChatServerExample.Hubs
                 NickName = nickName
             };
 
+            //Server clientlara kullanıcıyı ekler.
             ClientSource.Clients.Add(myClient);
+            //Clientlara , ilgili clientin girişi yaptıgı bılgısını gonderır.
             await Clients.Others.SendAsync("clientJoined", nickName);
-            //Nicknameleri gönder.
+
+            //Tüm clientlara Nicknameleri gönderir/günceller.
             await Clients.All.SendAsync("allClients", ClientSource.Clients);
+
+            //İlgili clienta connectionId gonder
+            await Clients.Caller.SendAsync("sendThisConnectionId", ThisClient().ConnectionId);
         }
 
         //Genel mesaj fonk.
         public async Task SendMessageAsync(string message, string clientName)
         {
-            MyClient senderClient = ClientSource.Clients.FirstOrDefault(x => x.ConnectionId == Context.ConnectionId);
 
             if (clientName == "Tümü")
             {
-                await Clients.Others.SendAsync("receiveMessage", message, senderClient.NickName);
+                await Clients.Others.SendAsync("receiveMessage", message, ThisClient().NickName);
             }
             else
             {
                 MyClient client = ClientSource.Clients.FirstOrDefault(x => x.NickName == clientName);
-                await Clients.Client(client.ConnectionId).SendAsync("receiveMessage", message, senderClient.NickName);
+                await Clients.Client(client.ConnectionId).SendAsync("receiveMessage", message, ThisClient().NickName);
             }
 
         }
@@ -45,7 +50,13 @@ namespace SignalRChatServerExample.Hubs
         public async Task CreateGroup(string groupName)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-            GroupSource.Groups.Add(new MyGroup() { GroupName = groupName });
+
+            var group = new MyGroup() { GroupName = groupName };
+            //Eklenilen gruba ekleyen kişiyi ekledik
+            //Proje tarafı bilsin.
+            group.Clients.Add(ThisClient());
+
+            GroupSource.Groups.Add(group);
 
             await Clients.All.SendAsync("addedGroup", groupName);
         }
@@ -55,8 +66,31 @@ namespace SignalRChatServerExample.Hubs
         {
             foreach (var group in groups)
             {
+                //SignalR tarafında gruba ekledik. Birde groupSoruce tarafında ekleyecegız.
                 await Groups.AddToGroupAsync(Context.ConnectionId, group);
+
+                var _group = GroupSource.Groups.FirstOrDefault(x => x.GroupName == group);
+                if (!_group.Clients.Any(x => x.ConnectionId == ThisClient().ConnectionId))
+                {
+                    _group.Clients.Add(ThisClient());
+                }
+                // HATA ! odada yoksa ekleyeceğiz          
             }
+        }
+        //Seçilen grubun kullanıcıları döndür.
+        public async Task SendGroupClients(string groupName)
+        {
+            //groupName degeri tümü ise tüm clientlar degil ise o gruptaki clientları gonderır.
+            var thisGroup = GroupSource.Groups.FirstOrDefault(x => x.GroupName == groupName);
+            await Clients.Caller.SendAsync("allClients", groupName == "Tümü" ? ClientSource.Clients : thisGroup.Clients);
+
+
+        }
+
+        //Bu clienti bul
+        public MyClient ThisClient()
+        {
+            return ClientSource.Clients.FirstOrDefault(x => x.ConnectionId == Context.ConnectionId);
         }
     }
 }

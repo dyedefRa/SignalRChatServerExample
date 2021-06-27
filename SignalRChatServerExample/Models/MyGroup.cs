@@ -8,5 +8,6 @@ namespace SignalRChatServerExample.Models
     public class MyGroup
     {
         public string GroupName { get; set; }
+        public List<MyClient> Clients { get; } = new List<MyClient>();
     }
 }
